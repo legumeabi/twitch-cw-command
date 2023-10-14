@@ -1,0 +1,29 @@
+{
+  "name": "twitch-cw-command",
+  "version": "2.0.1",
+  "description": "A simple tool to add a content warning command to your Twitch chat.",
+  "main": "index.html",
+  "type": "module",
+  "engines": {
+    "node": "16.x"
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thelegumeduprix/twitch-cw-command.git"
+  },
+  "keywords": [
+    "twitch",
+    "bot"
+  ],
+  "author": "@thelegumeduprix",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "tmi.js": "^1.8.5",
+    "vite": "^3.0.8"
+  }
+}
