@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020" /* Modern target for Electron/Tauri apps */,
+    "lib": ["ES2020", "DOM"] /* Include browser APIs and modern JS features */,
+    "module": "ESNext" /* Use modern module system */,
+    "moduleResolution": "bundler" /* Better for Vite bundling */,
+    "baseUrl": "./" /* Enable absolute imports */,
+    "paths": {
+      "@/*": ["src/*"] /* Enable @ alias for src directory */
+    },
+
+    "noEmit": true /* Don't emit files since Vite handles the compilation */,
+    "sourceMap": true /* Enable sourcemaps for debugging */,
+    "esModuleInterop": true /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */,
+    "forceConsistentCasingInFileNames": true /* Ensure that casing is correct in imports. */,
+
+    "strict": true /* Enable all strict type-checking options. */,
+    "noUnusedLocals": true /* Enable error reporting when local variables aren't read. */,
+    "noUnusedParameters": true /* Raise an error when a function parameter isn't read. */,
+
+    "skipLibCheck": true /* Skip type checking all .d.ts files. */
+  },
+  "include": ["src/**/*"] /* Include all files in src directory */
+}

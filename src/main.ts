@@ -1,18 +1,19 @@
 import tmi from "tmi.js";
 
+import type { ChatUserstate } from "tmi.js";
+
 const queryParameters = new URLSearchParams(window.location.search);
 
-const CHANNEL_NAME = queryParameters.get("channel");
-const OAUTH_TOKEN = queryParameters.get("token");
+const CHANNEL_NAME = queryParameters.get("channel") || "";
+const OAUTH_TOKEN = queryParameters.get("token") || "";
 const DEFAULT_COOLDOWN = 60; // in seconds
-const COMMAND_COOLDOWN =
-  (queryParameters.get("cooldown") || DEFAULT_COOLDOWN) * 1000; // multiply by 1000 to get the milliseconds count
+const COMMAND_COOLDOWN = (Number(queryParameters.get("cooldown")) || DEFAULT_COOLDOWN) * 1000; // multiply by 1000 to get the milliseconds count
 
-const CW_SERVICE_URL =
-  "https://heroic-deploy-kna60f.ampt.app/cw-details";
+const CW_SERVICE_URL = "https://heroic-deploy-kna60f.ampt.app/cw-details";
 
 // this stores the time when the the command was used the last time by a regular user
-let lastUsedTime;
+let lastUsedTime: number;
+const a = 5;
 
 const client = new tmi.Client({
   channels: [CHANNEL_NAME],
@@ -26,6 +27,7 @@ client.connect();
 
 setInterval(() => {
   const statusElement = document.querySelector("#status");
+  if (!statusElement) return;
 
   switch (client.readyState()) {
     case "OPEN":
@@ -42,7 +44,7 @@ setInterval(() => {
   }
 }, 1000);
 
-client.on("message", async (channel, tags, message, self) => {
+client.on("message", async (channel: string, tags: ChatUserstate, message: string) => {
   const trimmedMessage = message.trim();
 
   // ignore everything that is not the "cw" command
@@ -83,23 +85,16 @@ client.on("message", async (channel, tags, message, self) => {
   }, 800);
 
   // get the content warning text to send
-  fetch(url)
-    .then((response) => {
-      clearTimeout(timerForLoadingMessage);
-      return response.text();
-    })
-    .then((text) => {
-      // send the content warning text into chat
-      console.log(
-        `Sending the following text into the ${channelName} channel: "${text}"`
-      );
-      client.say(channelName, text);
-    })
-    .catch((e) => {
-      console.error(e);
-      client.say(
-        channelName,
-        "I'm sorry, but I couldn't get the content warnings for you :("
-      );
-    });
+  try {
+    const response = await fetch(url);
+    clearTimeout(timerForLoadingMessage);
+    const text = await response.text();
+
+    // send the content warning text into chat
+    console.log(`Sending the following text into the ${channelName} channel: "${text}"`);
+    client.say(channelName, text);
+  } catch (e) {
+    console.error(e);
+    client.say(channelName, "Sorry, I couldn't fetch the content warning information. Please try again later.");
+  }
 });
