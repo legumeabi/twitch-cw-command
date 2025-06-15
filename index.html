@@ -9,26 +9,11 @@
   </head>
 
   <body>
-    <div class="auth-section">
+    <div class="card">
       <div id="connect-view">
         <button class="auth-button" id="connect-button">Connect with Twitch</button>
       </div>
-
-      <div id="verification-view" class="hidden">
-        <h2>Enter this code at <a href="https://twitch.tv/activate" target="_blank">twitch.tv/activate</a></h2>
-        <div class="verification-code" id="user-code"></div>
-        <p>Waiting for verification...</p>
-      </div>
-
-      <div id="connected-view" class="hidden">
-        <h2>Successfully Connected to Twitch</h2>
-        <p>You can now use the application.</p>
-        <button class="auth-button" id="disconnect-button">Disconnect</button>
-        <h3>Debug Information</h3>
-        <pre id="debug-tokens" style="white-space: pre-wrap; word-break: break-all"></pre>
-      </div>
     </div>
-
-    <script type="module" src="./src/main.ts"></script>
+    <!-- <script type="module" src="./src/main.ts"></script> -->
   </body>
 </html>
