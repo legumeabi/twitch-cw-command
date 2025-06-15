@@ -25,12 +25,14 @@
   "author": "@legumeabi",
   "license": "GPL-3.0",
   "dependencies": {
+    "@tauri-apps/api": "^2.5.0",
     "tmi.js": "^1.8.5",
     "vite": "^6.3.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.29.0",
+    "@tauri-apps/cli": "^2.5.0",
     "@types/node": "^24.0.1",
     "@types/tmi.js": "^1.8.6",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
