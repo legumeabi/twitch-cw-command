@@ -13,7 +13,6 @@ const CW_SERVICE_URL = "https://heroic-deploy-kna60f.ampt.app/cw-details";
 
 // this stores the time when the the command was used the last time by a regular user
 let lastUsedTime: number;
-const a = 5;
 
 const client = new tmi.Client({
   channels: [CHANNEL_NAME],
