@@ -5,14 +5,13 @@ let client: tmi.Client | null = null;
 let lastUsedTime = 0;
 
 const DEFAULT_COOLDOWN = 60; // in seconds
-const DEFAULT_CHANNEL = "legumeabi";
 const CW_SERVICE_URL = "https://heroic-deploy-kna60f.ampt.app/cw-details";
 
-interface ChatConfig {
-  accessToken: string;
-  channelName?: string;
-  cooldownSeconds?: number;
-}
+// Get configuration from URL parameters
+const queryParams = new URLSearchParams(window.location.search);
+const channelName = queryParams.get("channel") || "";
+const oauthToken = queryParams.get("token") || "";
+const cooldownSeconds = Number(queryParams.get("cooldown")) || DEFAULT_COOLDOWN;
 
 function updateStatus() {
   const statusElement = document.querySelector("#status");
@@ -33,82 +32,77 @@ function updateStatus() {
   }
 }
 
-export async function connectToChat({
-  accessToken,
-  channelName = DEFAULT_CHANNEL, // Default for now
-  cooldownSeconds = DEFAULT_COOLDOWN,
-}: ChatConfig): Promise<tmi.Client> {
+export async function connectToChat(): Promise<void> {
+  if (!channelName || !oauthToken) {
+    throw new Error("Missing required parameters: channel and/or token");
+  }
+
   // Disconnect existing client if there is one
   if (client) {
-    await client.disconnect();
-    client = null;
+    await disconnectFromChat();
   }
 
   try {
-    // Get username by validating the token
-    const { validation } = await import("./auth").then((m) => m.validateToken(accessToken));
-    const username = validation.login;
-    console.log("Connecting as:", username);
-
-    // Create new client with the validated username
     const newClient = new tmi.Client({
       options: { debug: true },
       identity: {
-        username,
-        password: `oauth:${accessToken}`,
+        username: "ANY_NAME",
+        password: `oauth:${oauthToken}`,
       },
       channels: [channelName],
     });
 
-    // Register event handlers
-    newClient.on("connected", (address: string, port: number) => {
-      console.log(`Connected to ${address}:${port}`);
+    newClient.on("connected", () => {
+      console.log("Connected to Twitch chat");
       updateStatus();
     });
 
     newClient.on("message", async (channel: string, userstate: ChatUserstate, message: string) => {
-      const trimmedMessage = message.trim();
-      if (trimmedMessage.toLowerCase() !== "!cw2") return;
+      if (message.trim() !== "!cw") return;
 
-      // Check cooldown
-      const now = Date.now();
-      const cooldownMs = cooldownSeconds * 1000;
+      const channelNameNoHash = channel.slice(1);
+      console.log(`!cw command in ${channelNameNoHash} channel detected`);
 
-      if (now - lastUsedTime < cooldownMs) {
-        const remainingSeconds = Math.ceil((cooldownMs - (now - lastUsedTime)) / 1000);
-        console.log(`Command on cooldown. ${remainingSeconds}s remaining`);
-        return;
+      // Check cooldown for non-mods/non-broadcasters
+      const isMod = userstate.mod || userstate.username === channelNameNoHash;
+      if (!isMod) {
+        const now = Date.now();
+        const cooldownMs = cooldownSeconds * 1000;
+
+        if (now - lastUsedTime < cooldownMs) {
+          console.log(`Command on cooldown. ${Math.ceil((cooldownMs - (now - lastUsedTime)) / 1000)}s remaining`);
+          return;
+        }
+        lastUsedTime = now;
       }
 
-      console.log(`Received !cw2 command in ${channel} from ${userstate.username}`);
-      
+      const loadingMessage = setTimeout(() => {
+        newClient.say(channel, "Give me a second...");
+      }, 800);
+
       try {
-        // Send initial response while fetching data
-        await newClient.say(channel, "Fetching latest CW information...");
-        
-        // Fetch data from CW service
-        const response = await fetch(CW_SERVICE_URL);
+        const url = `${CW_SERVICE_URL}?channelName=${channelNameNoHash}`;
+        const response = await fetch(url);
+        clearTimeout(loadingMessage);
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json();
-        
-        // Send the text response
-        await newClient.say(channel, data.text);
-      } catch (error) {
-        console.error('Error fetching CW data:', error);
-        await newClient.say(channel, "Sorry, I couldn't fetch the current war information. Please try again later.");
-      }
 
-      lastUsedTime = now;
+        const text = await response.text();
+        await newClient.say(channel, text);
+      } catch (error) {
+        console.error("Error fetching CW data:", error);
+        await newClient.say(
+          channel,
+          "Sorry, I couldn't fetch the content warning information. Please try again later."
+        );
+      }
     });
 
-    // Connect to Twitch
     await newClient.connect();
     client = newClient;
     updateStatus();
-
-    return newClient;
   } catch (error) {
     console.error("Error connecting to chat:", error);
     throw error;

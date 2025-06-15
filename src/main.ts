@@ -1,99 +1,121 @@
-import tmi from "tmi.js";
+import { clearTokens, getStoredTokens, pollAuth, startDeviceAuth, storeTokens } from "./auth";
+import { connectToChat } from "./chat";
 
-import type { ChatUserstate } from "tmi.js";
+let polling = false;
+let pollInterval: number | null = null;
 
-const queryParameters = new URLSearchParams(window.location.search);
-
-const CHANNEL_NAME = queryParameters.get("channel") || "";
-const OAUTH_TOKEN = queryParameters.get("token") || "";
-const DEFAULT_COOLDOWN = 60; // in seconds
-const COMMAND_COOLDOWN = (Number(queryParameters.get("cooldown")) || DEFAULT_COOLDOWN) * 1000; // multiply by 1000 to get the milliseconds count
-
-const CW_SERVICE_URL = "https://heroic-deploy-kna60f.ampt.app/cw-details";
-
-// this stores the time when the the command was used the last time by a regular user
-let lastUsedTime: number;
-
-const client = new tmi.Client({
-  channels: [CHANNEL_NAME],
-  identity: {
-    username: "ANY_NAME",
-    password: OAUTH_TOKEN,
-  },
-});
-
-client.connect();
-
-setInterval(() => {
-  const statusElement = document.querySelector("#status");
-  if (!statusElement) return;
-
-  switch (client.readyState()) {
-    case "OPEN":
-      statusElement.innerHTML = "🟢 Running";
-      break;
-    case "CONNECTING":
-      statusElement.innerHTML = "🚀 Starting";
-      break;
-    case "CLOSING":
-    case "CLOSED":
-    default:
-      statusElement.innerHTML = "🛑 Stopped";
-      break;
+// Check for existing tokens and update UI accordingly
+function checkExistingAuth(): void {
+  const tokens = getStoredTokens();
+  if (tokens) {
+    document.getElementById("connect-view")?.classList.add("hidden");
+    document.getElementById("connected-view")?.classList.remove("hidden");
+    // Update debug display
+    const debugElement = document.getElementById("debug-tokens");
+    if (debugElement) {
+      debugElement.textContent = JSON.stringify(tokens, null, 2);
+    }
+    // Initialize chat with stored tokens
+    initChat();
   }
-}, 1000);
+}
 
-client.on("message", async (channel: string, tags: ChatUserstate, message: string) => {
-  const trimmedMessage = message.trim();
+// Handle disconnect button click
+function handleDisconnect(): void {
+  clearTokens();
+  document.getElementById("connected-view")?.classList.add("hidden");
+  document.getElementById("connect-view")?.classList.remove("hidden");
+}
 
-  // ignore everything that is not the "cw" command
-  // -> just return and do nothing
-  if (trimmedMessage !== "!cw") return;
+// Start the authentication process
+async function startAuth(): Promise<void> {
+  try {
+    document.getElementById("connect-view")?.classList.add("hidden");
+    document.getElementById("verification-view")?.classList.remove("hidden");
 
-  const channelName = channel.slice(1);
-
-  console.log(`!cw command in ${channelName} channel detected`);
-
-  // user distinctions are for command cooldown handling
-  const sentByBroadcaster = tags.username === CHANNEL_NAME;
-  const sentByMod = tags.mod;
-  const sentByRegularUser = !sentByMod && !sentByBroadcaster;
-
-  // handle cooldowns for regular users
-  if (sentByRegularUser) {
-    console.log("Command sent by regular user, checking cooldowns...");
-    const currentTime = Date.now();
-
-    if (lastUsedTime && currentTime - lastUsedTime < COMMAND_COOLDOWN) {
-      // there is a cooldown and the last message is not yet beyond the cooldown threshold
-      // -> return without sending any message
-      console.log("Command is on cooldown. No response sent");
-      return;
+    const auth = await startDeviceAuth();
+    const userCodeElement = document.getElementById("user-code");
+    if (userCodeElement) {
+      userCodeElement.textContent = auth.user_code;
     }
 
-    lastUsedTime = currentTime;
-    console.log("Command by regular user accepted. Response will be sent...");
+    // Start polling for auth completion
+    polling = true;
+    pollInterval = window.setInterval(async () => {
+      if (!polling) return;
+
+      const tokens = await pollAuth(auth.device_code);
+      if (tokens) {
+        polling = false;
+        if (pollInterval) clearInterval(pollInterval);
+
+        // Show connected view
+        document.getElementById("verification-view")?.classList.add("hidden");
+        document.getElementById("connected-view")?.classList.remove("hidden");
+
+        // Store tokens and update debug information
+        storeTokens(tokens);
+        const debugElement = document.getElementById("debug-tokens");
+        if (debugElement) {
+          debugElement.textContent = JSON.stringify(tokens, null, 2);
+        }
+
+        // Initialize chat with new tokens
+        initChat();
+      }
+    }, auth.interval * 1000);
+
+    // Set a timeout to stop polling after the expires_in period
+    setTimeout(() => {
+      if (polling) {
+        polling = false;
+        if (pollInterval) clearInterval(pollInterval);
+        alert("Verification timeout. Please try again.");
+        document.getElementById("verification-view")?.classList.add("hidden");
+        document.getElementById("connect-view")?.classList.remove("hidden");
+      }
+    }, auth.expires_in * 1000);
+  } catch (error) {
+    console.error("Error starting auth:", error);
+    alert("Failed to start authentication. Please try again.");
+    document.getElementById("verification-view")?.classList.add("hidden");
+    document.getElementById("connect-view")?.classList.remove("hidden");
   }
+}
 
-  const url = `${CW_SERVICE_URL}?channelName=${channelName}`;
-
-  // prepare a timed message that only gets send if it does not get canceled in time
-  // by a successful response
-  const timerForLoadingMessage = setTimeout(() => {
-    client.say(channelName, "Give me a second...");
-  }, 800);
-
-  // get the content warning text to send
+// Initialize chat connection
+async function initChat(): Promise<void> {
   try {
-    const response = await fetch(url);
-    clearTimeout(timerForLoadingMessage);
-    const text = await response.text();
-
-    // send the content warning text into chat
-    console.log(`Sending the following text into the ${channelName} channel: "${text}"`);
-    client.say(channelName, text);
-  } catch (e) {
-    console.error(e);
-    client.say(channelName, "Sorry, I couldn't fetch the content warning information. Please try again later.");
+    await connectToChat();
+  } catch (error) {
+    console.error("Failed to initialize chat:", error);
+    const statusElement = document.getElementById("status");
+    if (statusElement) {
+      statusElement.innerHTML = "🛑 Failed to connect";
+    }
   }
-});
+}
+
+// Add event listeners once DOM is loaded
+function initialize(): void {
+  const connectButton = document.getElementById("connect-button");
+  const disconnectButton = document.getElementById("disconnect-button");
+
+  if (connectButton) {
+    connectButton.addEventListener("click", startAuth);
+  }
+
+  if (disconnectButton) {
+    disconnectButton.addEventListener("click", handleDisconnect);
+  }
+
+  // Check for existing auth on page load
+  checkExistingAuth();
+}
+
+// Wait for DOM to be loaded before initializing
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initialize);
+} else {
+  initialize();
+}
