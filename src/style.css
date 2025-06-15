@@ -31,3 +31,7 @@ pre {
   border-radius: 0.25rem;
   margin-block-start: 1rem;
 }
+
+#resetButton {
+  margin-block-start: 1rem;
+}

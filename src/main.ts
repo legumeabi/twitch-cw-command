@@ -62,6 +62,18 @@ const clearTokenData = () => {
   Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
 };
 
+const showInitialState = () => {
+  const authStartEl = document.getElementById("authStart");
+  const authCodeEl = document.getElementById("authCode");
+  const authSuccessEl = document.getElementById("authSuccess");
+
+  if (authStartEl && authCodeEl && authSuccessEl) {
+    authStartEl.style.display = "block";
+    authCodeEl.style.display = "none";
+    authSuccessEl.style.display = "none";
+  }
+};
+
 const updateUIWithTokenData = (tokenData: TokenData) => {
   const authStartEl = document.getElementById("authStart");
   const authCodeEl = document.getElementById("authCode");
@@ -74,6 +86,11 @@ const updateUIWithTokenData = (tokenData: TokenData) => {
     authSuccessEl.style.display = "block";
     tokenInfoEl.textContent = JSON.stringify(tokenData, null, 2);
   }
+};
+
+const handleReset = () => {
+  clearTokenData();
+  showInitialState();
 };
 
 const startDeviceAuth = async (): Promise<DeviceAuthResponse | null> => {
@@ -145,11 +162,14 @@ const handleAuthFlow = async () => {
   poll();
 };
 
+// Initialize event listeners and check initial state
+document.getElementById("authButton")?.addEventListener("click", handleAuthFlow);
+document.getElementById("resetButton")?.addEventListener("click", handleReset);
+
 // Check for existing token data on load
 const existingToken = loadTokenData();
 if (existingToken) {
   updateUIWithTokenData(existingToken);
 } else {
-  // Initialize button click handler if no existing token
-  document.getElementById("authButton")?.addEventListener("click", handleAuthFlow);
+  showInitialState();
 }
