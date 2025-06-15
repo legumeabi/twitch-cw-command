@@ -31,33 +31,6 @@ const startDeviceAuth = async (): Promise<DeviceAuthResponse | null> => {
   }
 };
 
-const pollForToken = async (deviceCode: string): Promise<string | null> => {
-  try {
-    const tokenResponse = await fetch("https://id.twitch.tv/oauth2/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        scopes: "chat:read chat:edit",
-        device_code: deviceCode,
-        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-      }),
-    });
-
-    if (tokenResponse.status === 200) {
-      const tokenData = await tokenResponse.json();
-      return tokenData.access_token;
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Error polling for token:", error);
-    return null;
-  }
-};
-
 const handleAuthFlow = async () => {
   const deviceData = await startDeviceAuth();
   if (!deviceData) {
@@ -65,14 +38,45 @@ const handleAuthFlow = async () => {
     return;
   }
 
-  console.log("Please visit:", deviceData.verification_uri);
-  console.log("And enter code:", deviceData.user_code);
+  // Hide the initial auth button and show the code section
+  const authStartEl = document.getElementById("authStart");
+  const authCodeEl = document.getElementById("authCode");
+  const urlEl = document.getElementById("verificationUrl") as HTMLAnchorElement;
+  const codeEl = document.getElementById("userCode");
+
+  if (authStartEl && authCodeEl && urlEl && codeEl) {
+    authStartEl.style.display = "none";
+    authCodeEl.style.display = "grid";
+    urlEl.href = deviceData.verification_uri;
+    codeEl.textContent = deviceData.user_code;
+  }
 
   // Start polling
   const poll = async () => {
-    const token = await pollForToken(deviceData.device_code);
-    if (token) {
-      console.log("Authentication successful! Access token:", token);
+    const tokenResponse = await fetch("https://id.twitch.tv/oauth2/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        device_code: deviceData.device_code,
+        scopes: "chat:read chat:edit",
+        grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+      }),
+    });
+
+    if (tokenResponse.status === 200) {
+      const tokenData = await tokenResponse.json();
+      const authCodeEl = document.getElementById("authCode");
+      const authSuccessEl = document.getElementById("authSuccess");
+      const tokenInfoEl = document.getElementById("tokenInfo");
+
+      if (authCodeEl && authSuccessEl && tokenInfoEl) {
+        authCodeEl.style.display = "none";
+        authSuccessEl.style.display = "block";
+        tokenInfoEl.textContent = JSON.stringify(tokenData, null, 2);
+      }
     } else {
       // If not authenticated yet, poll again after the specified interval
       setTimeout(poll, deviceData.interval * 1000);

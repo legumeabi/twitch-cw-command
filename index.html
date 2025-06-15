@@ -10,7 +10,19 @@
   </head>
   <body>
     <div class="card">
-      <button id="authButton">Authenticate with Twitch</button>
+      <div id="authStart">
+        <button id="authButton">Authenticate with Twitch</button>
+      </div>
+      <div id="authCode" style="display: none">
+        <a id="verificationUrl" href="" target="_blank">Click here to open Twitch.tv/activate</a>
+        <p>
+          <strong>Enter this code: <span id="userCode"></span></strong>
+        </p>
+      </div>
+      <div id="authSuccess" style="display: none">
+        <p><strong>✓ Verified with Twitch</strong></p>
+        <pre id="tokenInfo"></pre>
+      </div>
     </div>
   </body>
 </html>
