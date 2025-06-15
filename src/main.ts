@@ -10,7 +10,7 @@ interface DeviceAuthResponse {
   interval: number;
 }
 
-async function startDeviceAuth(): Promise<DeviceAuthResponse | null> {
+const startDeviceAuth = async (): Promise<DeviceAuthResponse | null> => {
   try {
     const deviceCodeResponse = await fetch("https://id.twitch.tv/oauth2/device", {
       method: "POST",
@@ -29,9 +29,9 @@ async function startDeviceAuth(): Promise<DeviceAuthResponse | null> {
     console.error("Error starting device auth:", error);
     return null;
   }
-}
+};
 
-async function pollForToken(deviceCode: string): Promise<string | null> {
+const pollForToken = async (deviceCode: string): Promise<string | null> => {
   try {
     const tokenResponse = await fetch("https://id.twitch.tv/oauth2/token", {
       method: "POST",
@@ -56,9 +56,9 @@ async function pollForToken(deviceCode: string): Promise<string | null> {
     console.error("Error polling for token:", error);
     return null;
   }
-}
+};
 
-async function handleAuthFlow() {
+const handleAuthFlow = async () => {
   const deviceData = await startDeviceAuth();
   if (!deviceData) {
     console.error("Failed to start device authentication");
@@ -80,7 +80,7 @@ async function handleAuthFlow() {
   };
 
   poll();
-}
+};
 
 // Initialize button click handler
 document.getElementById("authButton")?.addEventListener("click", handleAuthFlow);
