@@ -1,60 +1,25 @@
 import type { ChatUserstate } from "tmi.js";
 import tmi from "tmi.js";
 
-let client: tmi.Client | null = null;
 let lastUsedTime = 0;
 
+const CHANNEL_NAME = "legumeabi";
 const DEFAULT_COOLDOWN = 60; // in seconds
 const CW_SERVICE_URL = "https://heroic-deploy-kna60f.ampt.app/cw-details";
 
-// Get configuration from URL parameters
-const queryParams = new URLSearchParams(window.location.search);
-const channelName = queryParams.get("channel") || "";
-const oauthToken = queryParams.get("token") || "";
-const cooldownSeconds = Number(queryParams.get("cooldown")) || DEFAULT_COOLDOWN;
-
-function updateStatus() {
-  const statusElement = document.querySelector("#status");
-  if (!statusElement || !client) return;
-
-  switch (client.readyState()) {
-    case "OPEN":
-      statusElement.innerHTML = "🟢 Running";
-      break;
-    case "CONNECTING":
-      statusElement.innerHTML = "🚀 Starting";
-      break;
-    case "CLOSING":
-    case "CLOSED":
-    default:
-      statusElement.innerHTML = "🛑 Stopped";
-      break;
-  }
-}
-
-export async function connectToChat(): Promise<void> {
+export async function connectToChat(channelName?: string, oauthToken?: string): Promise<void> {
   if (!channelName || !oauthToken) {
     throw new Error("Missing required parameters: channel and/or token");
-  }
-
-  // Disconnect existing client if there is one
-  if (client) {
-    await disconnectFromChat();
   }
 
   try {
     const newClient = new tmi.Client({
       options: { debug: true },
       identity: {
-        username: "ANY_NAME",
+        username: channelName,
         password: `oauth:${oauthToken}`,
       },
-      channels: [channelName],
-    });
-
-    newClient.on("connected", () => {
-      console.log("Connected to Twitch chat");
-      updateStatus();
+      channels: [CHANNEL_NAME],
     });
 
     newClient.on("message", async (channel: string, userstate: ChatUserstate, message: string) => {
@@ -67,7 +32,7 @@ export async function connectToChat(): Promise<void> {
       const isMod = userstate.mod || userstate.username === channelNameNoHash;
       if (!isMod) {
         const now = Date.now();
-        const cooldownMs = cooldownSeconds * 1000;
+        const cooldownMs = DEFAULT_COOLDOWN * 1000;
 
         if (now - lastUsedTime < cooldownMs) {
           console.log(`Command on cooldown. ${Math.ceil((cooldownMs - (now - lastUsedTime)) / 1000)}s remaining`);
@@ -101,18 +66,8 @@ export async function connectToChat(): Promise<void> {
     });
 
     await newClient.connect();
-    client = newClient;
-    updateStatus();
   } catch (error) {
     console.error("Error connecting to chat:", error);
     throw error;
-  }
-}
-
-export async function disconnectFromChat(): Promise<void> {
-  if (client) {
-    await client.disconnect();
-    client = null;
-    updateStatus();
   }
 }

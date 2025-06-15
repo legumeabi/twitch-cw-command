@@ -4,82 +4,28 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cw-command</title>
-    <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif,
-          "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-      }
-
-      .auth-section {
-        margin: 20px 0;
-        padding: 20px;
-        border-radius: 8px;
-        background-color: #f5f5f5;
-        text-align: center;
-      }
-
-      .auth-button {
-        display: inline-block;
-        padding: 10px 20px;
-        background-color: #9147ff;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        font-weight: bold;
-      }
-
-      .auth-button:hover {
-        background-color: #772ce8;
-      }
-
-      .verification-code {
-        font-size: 24px;
-        font-weight: bold;
-        margin: 20px 0;
-        padding: 10px;
-        background-color: white;
-        border-radius: 4px;
-      }
-
-      .hidden {
-        display: none;
-      }
-    </style>
+    <title>CW Bot</title>
+    <link type="text/css" rel="stylesheet" href="src/style.css" />
   </head>
 
   <body>
-    <h1>cw-command Status</h1>
-    <p id="status">🚀 Starting</p>
-
     <div class="auth-section">
-      <!-- Initial connect button -->
       <div id="connect-view">
         <button class="auth-button" id="connect-button">Connect with Twitch</button>
       </div>
 
-      <!-- Verification view (initially hidden) -->
       <div id="verification-view" class="hidden">
         <h2>Enter this code at <a href="https://twitch.tv/activate" target="_blank">twitch.tv/activate</a></h2>
         <div class="verification-code" id="user-code"></div>
         <p>Waiting for verification...</p>
       </div>
 
-      <!-- Connected view (initially hidden) -->
       <div id="connected-view" class="hidden">
-        <div style="color: #2ecc71; font-size: 48px">✓</div>
-        <h2 style="color: #2ecc71">Successfully Connected to Twitch</h2>
+        <h2>Successfully Connected to Twitch</h2>
         <p>You can now use the application.</p>
-        <button class="auth-button" style="background-color: #e74c3c" id="disconnect-button">Disconnect</button>
-
-        <!-- Debug info -->
-        <div style="margin-top: 20px; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 4px">
-          <h3 style="margin-top: 0">Debug Information</h3>
-          <pre id="debug-tokens" style="white-space: pre-wrap; word-break: break-all"></pre>
-        </div>
+        <button class="auth-button" id="disconnect-button">Disconnect</button>
+        <h3>Debug Information</h3>
+        <pre id="debug-tokens" style="white-space: pre-wrap; word-break: break-all"></pre>
       </div>
     </div>
 

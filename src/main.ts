@@ -5,7 +5,7 @@ let polling = false;
 let pollInterval: number | null = null;
 
 // Check for existing tokens and update UI accordingly
-function checkExistingAuth(): void {
+function initAuth(): void {
   const tokens = getStoredTokens();
   if (tokens) {
     document.getElementById("connect-view")?.classList.add("hidden");
@@ -15,8 +15,6 @@ function checkExistingAuth(): void {
     if (debugElement) {
       debugElement.textContent = JSON.stringify(tokens, null, 2);
     }
-    // Initialize chat with stored tokens
-    initChat();
   }
 }
 
@@ -85,18 +83,9 @@ async function startAuth(): Promise<void> {
 
 // Initialize chat connection
 async function initChat(): Promise<void> {
-  try {
-    await connectToChat();
-  } catch (error) {
-    console.error("Failed to initialize chat:", error);
-    const statusElement = document.getElementById("status");
-    if (statusElement) {
-      statusElement.innerHTML = "🛑 Failed to connect";
-    }
-  }
+  await connectToChat();
 }
 
-// Add event listeners once DOM is loaded
 function initialize(): void {
   const connectButton = document.getElementById("connect-button");
   const disconnectButton = document.getElementById("disconnect-button");
@@ -109,8 +98,9 @@ function initialize(): void {
     disconnectButton.addEventListener("click", handleDisconnect);
   }
 
-  // Check for existing auth on page load
-  checkExistingAuth();
+  initAuth();
+  // Initialize chat with stored tokens
+  initChat();
 }
 
 // Wait for DOM to be loaded before initializing

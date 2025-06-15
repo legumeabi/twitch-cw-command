@@ -106,9 +106,6 @@ function emitAuthState(state: { isRefreshing: boolean }) {
 export async function refreshTokens(refresh_token: string): Promise<AuthTokens | null> {
   emitAuthState({ isRefreshing: true });
 
-  // Create a promise that resolves after 1 second
-  const minDelay = new Promise((resolve) => setTimeout(resolve, 1000));
-
   try {
     const params = new URLSearchParams({
       client_id: CLIENT_ID,
@@ -124,9 +121,6 @@ export async function refreshTokens(refresh_token: string): Promise<AuthTokens |
       },
     });
 
-    // Wait for both the minimum delay and the response
-    await minDelay;
-
     if (!response.ok) {
       clearTokens();
       emitAuthState({ isRefreshing: false });
@@ -138,8 +132,6 @@ export async function refreshTokens(refresh_token: string): Promise<AuthTokens |
     return tokens as AuthTokens;
   } catch (error) {
     console.error("Error refreshing tokens:", error);
-    // Still wait for minimum delay even on error
-    await minDelay;
     clearTokens();
     emitAuthState({ isRefreshing: false });
     return null;
@@ -152,171 +144,5 @@ export async function getStoredTokens(): Promise<StoredTokens | null> {
 
   const tokens = JSON.parse(stored) as StoredTokens;
 
-  // Calculate if the access token has expired
-  const now = Date.now();
-  const expiresAt = tokens.stored_at + tokens.expires_in * 1000;
-
-  if (now >= expiresAt) {
-    // Token has expired, try to refresh it
-    emitAuthState({ isRefreshing: true }); // Add loading state when starting refresh
-    const refreshed = await refreshTokens(tokens.refresh_token);
-    if (refreshed) {
-      storeTokens(refreshed);
-      return {
-        ...refreshed,
-        stored_at: Date.now(),
-      };
-    }
-    return null;
-  }
-
   return tokens;
-}
-
-// Check tokens on page load
-checkAndRefreshTokens().catch(console.error);
-
-export function decodeAuthToken(accessToken: string): { login: string } | null {
-  try {
-    const base64Payload = accessToken.split(".")[1];
-    if (!base64Payload) return null;
-
-    const payload = JSON.parse(atob(base64Payload));
-    return {
-      login: payload.preferred_username || payload.sub,
-    };
-  } catch (error) {
-    console.error("Error decoding token:", error);
-    return null;
-  }
-}
-
-interface ValidateResponse {
-  client_id: string;
-  login: string;
-  scopes: string[];
-  user_id: string;
-  expires_in: number;
-}
-
-// Import loadTokens and storeTokens from earlier in the file
-function loadTokens(): AuthTokens | null {
-  const stored = localStorage.getItem("twitch_tokens");
-  if (!stored) return null;
-
-  try {
-    const tokens = JSON.parse(stored) as AuthTokens;
-    return tokens;
-  } catch {
-    return null;
-  }
-}
-
-interface ValidateResult {
-  token: string;
-  validation: ValidateResponse;
-}
-
-export async function validateToken(accessToken: string): Promise<ValidateResult> {
-  try {
-    const response = await fetch("https://id.twitch.tv/oauth2/validate", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (response.ok) {
-      return {
-        token: accessToken,
-        validation: await response.json(),
-      };
-    }
-
-    // If we get a 401, try to refresh the token
-    if (response.status === 401) {
-      // Get stored tokens to find the refresh token
-      const tokens = loadTokens();
-      if (!tokens) {
-        throw new Error("No stored tokens found");
-      }
-
-      // Try to refresh the tokens
-      const refreshed = await refreshTokens(tokens.refresh_token);
-      if (!refreshed) {
-        throw new Error("Failed to refresh token");
-      }
-
-      // Store the new tokens
-      storeTokens(refreshed);
-
-      // Try validation again with the new access token
-      const retryResponse = await fetch("https://id.twitch.tv/oauth2/validate", {
-        headers: {
-          Authorization: `Bearer ${refreshed.access_token}`,
-        },
-      });
-
-      if (!retryResponse.ok) {
-        throw new Error(`Token validation failed after refresh: ${retryResponse.statusText}`);
-      }
-
-      return {
-        token: refreshed.access_token,
-        validation: await retryResponse.json(),
-      };
-    }
-
-    throw new Error(`Failed to validate token: ${response.statusText}`);
-  } catch (error) {
-    console.error("Error validating token:", error);
-    throw error;
-  }
-}
-
-interface CheckResult {
-  tokens: StoredTokens;
-  validation: ValidateResponse;
-}
-
-export async function checkAndRefreshTokens(): Promise<CheckResult | null> {
-  const tokens = loadTokens();
-  if (!tokens) return null;
-
-  try {
-    // Try to validate the current token
-    const result = await validateToken(tokens.access_token);
-    // Return stored tokens with timestamp and validation info
-    return {
-      tokens: { ...tokens, stored_at: Date.now() },
-      validation: result.validation,
-    };
-  } catch (error) {
-    console.log("Token validation failed, trying refresh:", error);
-
-    // Try to refresh the token
-    try {
-      const refreshed = await refreshTokens(tokens.refresh_token);
-      if (refreshed) {
-        const storedTokens: StoredTokens = {
-          ...refreshed,
-          stored_at: Date.now(),
-        };
-        storeTokens(refreshed);
-
-        // Validate the new token
-        const result = await validateToken(refreshed.access_token);
-        const checkResult = {
-          tokens: storedTokens,
-          validation: result.validation,
-        };
-        return checkResult;
-      }
-    } catch (refreshError) {
-      console.error("Token refresh failed:", refreshError);
-    }
-
-    // If we get here, both validation and refresh failed
-    clearTokens();
-    return null;
-  }
 }
