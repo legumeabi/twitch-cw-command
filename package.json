@@ -24,6 +24,6 @@
   "license": "GPL-3.0",
   "dependencies": {
     "tmi.js": "^1.8.5",
-    "vite": "^3.0.8"
+    "vite": "^6.3.5"
   }
 }
