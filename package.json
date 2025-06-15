@@ -5,7 +5,7 @@
   "main": "index.html",
   "type": "module",
   "engines": {
-    "node": "16.x"
+    "node": "~22.16.0"
   },
   "scripts": {
     "start": "vite",
