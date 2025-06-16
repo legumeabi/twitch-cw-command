@@ -1,26 +1,14 @@
 import { Client } from "tmi.js";
+import { clearTokenData, loadTokenData, saveTokenData } from "./storage";
 import { DeviceAuthResponse, TokenData } from "./types";
+import { showInitialState, showVerificationUI, updateUIWithTokenData } from "./ui";
 
 // const DEFAULT_COOLDOWN = 60; // in seconds
 // const CW_SERVICE_URL = "https://heroic-deploy-kna60f.ampt.app/cw-details";
 const CLIENT_ID = "ghcwo4id7lg4bagl4nq20lbveffzyq";
 const CHANNEL_NAME = "legumeabi";
 
-import { clearTokenData, loadTokenData, saveTokenData } from "./storage";
-
 let twitchClient: Client | null = null;
-
-const showInitialState = () => {
-  const authStartEl = document.getElementById("authStart");
-  const authCodeEl = document.getElementById("authCode");
-  const authSuccessEl = document.getElementById("authSuccess");
-
-  if (authStartEl && authCodeEl && authSuccessEl) {
-    authStartEl.style.display = "block";
-    authCodeEl.style.display = "none";
-    authSuccessEl.style.display = "none";
-  }
-};
 
 const connectToChat = async (tokenData: TokenData) => {
   // Disconnect existing client if any
@@ -62,23 +50,6 @@ const connectToChat = async (tokenData: TokenData) => {
   }
 };
 
-const updateUIWithTokenData = (tokenData: TokenData) => {
-  const authStartEl = document.getElementById("authStart");
-  const authCodeEl = document.getElementById("authCode");
-  const authSuccessEl = document.getElementById("authSuccess");
-  const tokenInfoEl = document.getElementById("tokenInfo");
-
-  if (authStartEl && authCodeEl && authSuccessEl && tokenInfoEl) {
-    authStartEl.style.display = "none";
-    authCodeEl.style.display = "none";
-    authSuccessEl.style.display = "block";
-    tokenInfoEl.textContent = JSON.stringify(tokenData, null, 2);
-
-    // Connect to chat when we have token data
-    connectToChat(tokenData);
-  }
-};
-
 const handleReset = async () => {
   if (twitchClient) {
     await twitchClient.disconnect();
@@ -97,7 +68,7 @@ const startDeviceAuth = async (): Promise<DeviceAuthResponse | null> => {
       },
       body: new URLSearchParams({
         client_id: CLIENT_ID,
-        scopes: "chat:read chat:edit",
+        scope: "chat:read chat:edit",
       }),
     });
 
@@ -116,18 +87,7 @@ const handleAuthFlow = async () => {
     return;
   }
 
-  // Hide the initial auth button and show the code section
-  const authStartEl = document.getElementById("authStart");
-  const authCodeEl = document.getElementById("authCode");
-  const urlEl = document.getElementById("verificationUrl") as HTMLAnchorElement;
-  const codeEl = document.getElementById("userCode");
-
-  if (authStartEl && authCodeEl && urlEl && codeEl) {
-    authStartEl.style.display = "none";
-    authCodeEl.style.display = "block";
-    urlEl.href = deviceData.verification_uri;
-    codeEl.textContent = deviceData.user_code;
-  }
+  showVerificationUI(deviceData.verification_uri, deviceData.user_code);
 
   // Start polling
   const poll = async () => {
@@ -139,7 +99,7 @@ const handleAuthFlow = async () => {
       body: new URLSearchParams({
         client_id: CLIENT_ID,
         device_code: deviceData.device_code,
-        scopes: "chat:read chat:edit",
+        scope: "chat:read chat:edit",
         grant_type: "urn:ietf:params:oauth:grant-type:device_code",
       }),
     });
@@ -162,6 +122,7 @@ const handleAuthFlow = async () => {
         };
         saveTokenData(fullTokenData);
         updateUIWithTokenData(fullTokenData);
+        await connectToChat(fullTokenData);
       }
     } else {
       // If not authenticated yet, poll again after the specified interval
@@ -180,6 +141,7 @@ document.getElementById("resetButton")?.addEventListener("click", handleReset);
 const existingToken = loadTokenData();
 if (existingToken) {
   updateUIWithTokenData(existingToken);
+  connectToChat(existingToken);
 } else {
   showInitialState();
 }
