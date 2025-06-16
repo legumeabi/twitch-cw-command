@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   TOKEN_TYPE: "twitch_token_type",
   SCOPE: "twitch_scope",
   EXPIRES_IN: "twitch_expires_in",
+  USERNAME: "twitch_username",
 } as const;
 
 interface DeviceAuthResponse {
@@ -27,6 +28,7 @@ interface TokenData {
   scope: string[];
   token_type: string;
   expires_in: number;
+  username: string; // Renamed from login to username
 }
 
 let twitchClient: Client | null = null;
@@ -37,6 +39,7 @@ const saveTokenData = (data: TokenData) => {
   localStorage.setItem(STORAGE_KEYS.TOKEN_TYPE, data.token_type);
   localStorage.setItem(STORAGE_KEYS.SCOPE, JSON.stringify(data.scope));
   localStorage.setItem(STORAGE_KEYS.EXPIRES_IN, data.expires_in.toString());
+  localStorage.setItem(STORAGE_KEYS.USERNAME, data.username);
 };
 
 const loadTokenData = (): TokenData | null => {
@@ -45,8 +48,9 @@ const loadTokenData = (): TokenData | null => {
   const token_type = localStorage.getItem(STORAGE_KEYS.TOKEN_TYPE);
   const scopeStr = localStorage.getItem(STORAGE_KEYS.SCOPE);
   const expires_in = localStorage.getItem(STORAGE_KEYS.EXPIRES_IN);
+  const username = localStorage.getItem(STORAGE_KEYS.USERNAME);
 
-  if (!access_token || !refresh_token || !token_type || !scopeStr || !expires_in) {
+  if (!access_token || !refresh_token || !token_type || !scopeStr || !expires_in || !username) {
     return null;
   }
 
@@ -57,6 +61,7 @@ const loadTokenData = (): TokenData | null => {
       token_type,
       scope: JSON.parse(scopeStr),
       expires_in: parseInt(expires_in, 10),
+      username,
     };
   } catch {
     return null;
@@ -85,23 +90,47 @@ const connectToChat = async (tokenData: TokenData) => {
     await twitchClient.disconnect();
   }
 
-  // Create new client
-  twitchClient = new Client({
-    options: { debug: true },
-    identity: {
-      username: "justinfan12345", // Anonymous username, will be replaced once we connect
-      password: `oauth:${tokenData.access_token}`,
-    },
-    channels: [CHANNEL_NAME],
-  });
-
   try {
+    // Use the stored username if available, otherwise validate the token
+    let username = tokenData.username;
+    if (!username) {
+      const validateResponse = await fetch("https://id.twitch.tv/oauth2/validate", {
+        headers: {
+          Authorization: `OAuth ${tokenData.access_token}`,
+        },
+      });
+
+      if (!validateResponse.ok) {
+        throw new Error("Failed to validate token");
+      }
+
+      const validateData = await validateResponse.json();
+      username = validateData.login;
+      console.log("Validated username as:", username);
+    } else {
+      console.log("Using stored username:", username);
+    }
+
+    // Create new client with username
+    twitchClient = new Client({
+      options: { debug: true },
+      identity: {
+        username,
+        password: `oauth:${tokenData.access_token}`,
+      },
+      channels: [CHANNEL_NAME],
+    });
+
     await twitchClient.connect();
     console.log("Connected to Twitch chat!");
 
     // Add some basic event handlers
     twitchClient.on("message", (_channel, tags, message) => {
       console.log(`${tags["display-name"]}: ${message}`);
+
+      if (message.startsWith("!cw")) {
+        twitchClient?.say(CHANNEL_NAME, `Insert CW HERE`);
+      }
     });
   } catch (error) {
     console.error("Failed to connect to Twitch chat:", error);
@@ -192,8 +221,23 @@ const handleAuthFlow = async () => {
 
     if (tokenResponse.status === 200) {
       const tokenData = await tokenResponse.json();
-      saveTokenData(tokenData);
-      updateUIWithTokenData(tokenData);
+
+      // Validate token and get user info
+      const validateResponse = await fetch("https://id.twitch.tv/oauth2/validate", {
+        headers: {
+          Authorization: `OAuth ${tokenData.access_token}`,
+        },
+      });
+
+      if (validateResponse.ok) {
+        const validateData = await validateResponse.json();
+        const fullTokenData = {
+          ...tokenData,
+          username: validateData.login,
+        };
+        saveTokenData(fullTokenData);
+        updateUIWithTokenData(fullTokenData);
+      }
     } else {
       // If not authenticated yet, poll again after the specified interval
       setTimeout(poll, deviceData.interval * 1000);
