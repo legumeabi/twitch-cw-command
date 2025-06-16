@@ -1,60 +1,11 @@
-import { Client } from "tmi.js";
+import { connectToChat, disconnectChat } from "./chat";
+import { CLIENT_ID } from "./constants";
 import { clearTokenData, loadTokenData, saveTokenData } from "./storage";
-import { DeviceAuthResponse, TokenData } from "./types";
+import { DeviceAuthResponse } from "./types";
 import { showInitialState, showVerificationUI, updateUIWithTokenData } from "./ui";
 
-// const DEFAULT_COOLDOWN = 60; // in seconds
-// const CW_SERVICE_URL = "https://heroic-deploy-kna60f.ampt.app/cw-details";
-const CLIENT_ID = "ghcwo4id7lg4bagl4nq20lbveffzyq";
-const CHANNEL_NAME = "legumeabi";
-
-let twitchClient: Client | null = null;
-
-const connectToChat = async (tokenData: TokenData) => {
-  // Disconnect existing client if any
-  if (twitchClient) {
-    await twitchClient.disconnect();
-  }
-
-  try {
-    if (!tokenData.username) {
-      throw new Error("No username found in stored token data");
-    }
-
-    // Create new client with stored username
-    twitchClient = new Client({
-      options: { debug: true },
-      identity: {
-        username: tokenData.username,
-        password: `oauth:${tokenData.access_token}`,
-      },
-      channels: [CHANNEL_NAME],
-    });
-
-    await twitchClient.connect();
-    console.log("Connected to Twitch chat!");
-
-    // Add some basic event handlers
-    twitchClient.on("message", (_channel, tags, message) => {
-      console.log(`${tags["display-name"]}: ${message}`);
-
-      if (message.startsWith("!cw")) {
-        twitchClient?.say(CHANNEL_NAME, `Insert CW HERE`);
-      }
-    });
-  } catch (error) {
-    console.error("Failed to connect to Twitch chat:", error);
-    // Clear tokens and reset UI if we can't connect
-    clearTokenData();
-    showInitialState();
-  }
-};
-
 const handleReset = async () => {
-  if (twitchClient) {
-    await twitchClient.disconnect();
-    twitchClient = null;
-  }
+  await disconnectChat();
   clearTokenData();
   showInitialState();
 };
