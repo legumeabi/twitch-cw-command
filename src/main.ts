@@ -1,6 +1,9 @@
+import { Client } from "tmi.js";
+
 // const DEFAULT_COOLDOWN = 60; // in seconds
 // const CW_SERVICE_URL = "https://heroic-deploy-kna60f.ampt.app/cw-details";
 const CLIENT_ID = "ghcwo4id7lg4bagl4nq20lbveffzyq";
+const CHANNEL_NAME = "legumeabi";
 
 const STORAGE_KEYS = {
   ACCESS_TOKEN: "twitch_access_token",
@@ -25,6 +28,8 @@ interface TokenData {
   token_type: string;
   expires_in: number;
 }
+
+let twitchClient: Client | null = null;
 
 const saveTokenData = (data: TokenData) => {
   localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
@@ -74,6 +79,35 @@ const showInitialState = () => {
   }
 };
 
+const connectToChat = async (tokenData: TokenData) => {
+  // Disconnect existing client if any
+  if (twitchClient) {
+    await twitchClient.disconnect();
+  }
+
+  // Create new client
+  twitchClient = new Client({
+    options: { debug: true },
+    identity: {
+      username: "justinfan12345", // Anonymous username, will be replaced once we connect
+      password: `oauth:${tokenData.access_token}`,
+    },
+    channels: [CHANNEL_NAME],
+  });
+
+  try {
+    await twitchClient.connect();
+    console.log("Connected to Twitch chat!");
+
+    // Add some basic event handlers
+    twitchClient.on("message", (_channel, tags, message) => {
+      console.log(`${tags["display-name"]}: ${message}`);
+    });
+  } catch (error) {
+    console.error("Failed to connect to Twitch chat:", error);
+  }
+};
+
 const updateUIWithTokenData = (tokenData: TokenData) => {
   const authStartEl = document.getElementById("authStart");
   const authCodeEl = document.getElementById("authCode");
@@ -85,10 +119,17 @@ const updateUIWithTokenData = (tokenData: TokenData) => {
     authCodeEl.style.display = "none";
     authSuccessEl.style.display = "block";
     tokenInfoEl.textContent = JSON.stringify(tokenData, null, 2);
+
+    // Connect to chat when we have token data
+    connectToChat(tokenData);
   }
 };
 
-const handleReset = () => {
+const handleReset = async () => {
+  if (twitchClient) {
+    await twitchClient.disconnect();
+    twitchClient = null;
+  }
   clearTokenData();
   showInitialState();
 };
