@@ -12,7 +12,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "type-check": "tsc",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build-tauri": "tauri build"
   },
   "repository": {
     "type": "git",
