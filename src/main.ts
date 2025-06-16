@@ -91,31 +91,15 @@ const connectToChat = async (tokenData: TokenData) => {
   }
 
   try {
-    // Use the stored username if available, otherwise validate the token
-    let username = tokenData.username;
-    if (!username) {
-      const validateResponse = await fetch("https://id.twitch.tv/oauth2/validate", {
-        headers: {
-          Authorization: `OAuth ${tokenData.access_token}`,
-        },
-      });
-
-      if (!validateResponse.ok) {
-        throw new Error("Failed to validate token");
-      }
-
-      const validateData = await validateResponse.json();
-      username = validateData.login;
-      console.log("Validated username as:", username);
-    } else {
-      console.log("Using stored username:", username);
+    if (!tokenData.username) {
+      throw new Error("No username found in stored token data");
     }
 
-    // Create new client with username
+    // Create new client with stored username
     twitchClient = new Client({
       options: { debug: true },
       identity: {
-        username,
+        username: tokenData.username,
         password: `oauth:${tokenData.access_token}`,
       },
       channels: [CHANNEL_NAME],
@@ -134,6 +118,9 @@ const connectToChat = async (tokenData: TokenData) => {
     });
   } catch (error) {
     console.error("Failed to connect to Twitch chat:", error);
+    // Clear tokens and reset UI if we can't connect
+    clearTokenData();
+    showInitialState();
   }
 };
 
