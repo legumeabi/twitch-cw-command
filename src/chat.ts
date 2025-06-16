@@ -1,5 +1,5 @@
 import { Client } from "tmi.js";
-import { CHANNEL_NAME } from "./constants";
+import { CHANNEL_NAME, CW_SERVICE_URL } from "./constants";
 import { clearTokenData } from "./storage";
 import { TokenData } from "./types";
 import { showInitialState } from "./ui";
@@ -31,11 +31,9 @@ export const connectToChat = async (tokenData: TokenData) => {
     console.log("Connected to Twitch chat!");
 
     // Add some basic event handlers
-    twitchClient.on("message", (_channel, tags, message) => {
-      console.log(`${tags["display-name"]}: ${message}`);
-
+    twitchClient.on("message", (_channel, _tags, message) => {
       if (message.startsWith("!cw")) {
-        twitchClient?.say(CHANNEL_NAME, `Insert CW HERE`);
+        handleCWMesssage();
       }
     });
   } catch (error) {
@@ -43,6 +41,23 @@ export const connectToChat = async (tokenData: TokenData) => {
     // Clear tokens and reset UI if we can't connect
     clearTokenData();
     showInitialState();
+  }
+};
+
+const handleCWMesssage = async () => {
+  const serviceResponse = await fetch(`${CW_SERVICE_URL}?channelName=${CHANNEL_NAME}`);
+
+  if (!serviceResponse.ok) {
+    console.error("Failed to fetch CW details from service");
+    return;
+  }
+
+  const message = await serviceResponse.text();
+
+  if (twitchClient) {
+    twitchClient.say(CHANNEL_NAME, message);
+  } else {
+    console.error("Twitch client is not connected");
   }
 };
 
