@@ -3,9 +3,13 @@ import { defineConfig } from "vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  esbuild: {
+    target: "es2024",
+  },
   build: {
     outDir: "build",
     sourcemap: true,
+    target: "es2024",
   },
   server: {
     port: 3000,
