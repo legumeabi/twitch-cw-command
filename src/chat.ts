@@ -19,7 +19,7 @@ export const connectToChat = async (tokenData: TokenData) => {
 
     // Create new client with stored username
     twitchClient = new Client({
-      options: { debug: true },
+      options: { debug: true, skipUpdatingEmotesets: true },
       identity: {
         username: tokenData.username,
         password: `oauth:${tokenData.access_token}`,
