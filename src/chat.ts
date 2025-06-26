@@ -30,7 +30,6 @@ export const connectToChat = async (tokenData: TokenData) => {
     await twitchClient.connect();
     console.log("Connected to Twitch chat!");
 
-    // Add some basic event handlers
     twitchClient.on("message", (_channel, _tags, message) => {
       if (message.startsWith("!cw")) {
         handleCWMesssage();
@@ -45,20 +44,23 @@ export const connectToChat = async (tokenData: TokenData) => {
 };
 
 const handleCWMesssage = async () => {
+  if (!twitchClient) {
+    console.error("handleCWMesssage was called, but Twitch client is not connected");
+    return;
+  }
+
+  twitchClient.say(CHANNEL_NAME, "brb, fetching content warnings...");
   const serviceResponse = await fetch(`${CW_SERVICE_URL}?channelName=${CHANNEL_NAME}`);
 
   if (!serviceResponse.ok) {
     console.error("Failed to fetch CW details from service");
+    twitchClient.say(CHANNEL_NAME, "oops, something went wrong...");
     return;
   }
 
   const message = await serviceResponse.text();
 
-  if (twitchClient) {
-    twitchClient.say(CHANNEL_NAME, message);
-  } else {
-    console.error("Twitch client is not connected");
-  }
+  twitchClient.say(CHANNEL_NAME, message);
 };
 
 export const disconnectChat = async () => {
