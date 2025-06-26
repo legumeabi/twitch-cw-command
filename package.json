@@ -29,6 +29,7 @@
   "license": "GPL-3.0",
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
+    "@tauri-apps/plugin-opener": "^2.4.0",
     "tmi.js": "^1.8.5",
     "vite": "^6.3.5"
   },
