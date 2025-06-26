@@ -14,7 +14,7 @@ document.getElementById("authButton")?.addEventListener("click", handleAuthFlow)
 document.getElementById("resetButton")?.addEventListener("click", handleReset);
 
 // Check for existing token data on load
-const existingToken = loadTokenData();
+const existingToken = await loadTokenData();
 if (existingToken) {
   updateUIWithTokenData(existingToken);
   connectToChat(existingToken);

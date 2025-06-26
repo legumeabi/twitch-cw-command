@@ -1,4 +1,7 @@
+import { load } from "@tauri-apps/plugin-store";
 import { TokenData } from "./types";
+
+const store = await load("porridge.json", { autoSave: false });
 
 const STORAGE_KEYS = {
   ACCESS_TOKEN: "twitch_access_token",
@@ -9,22 +12,24 @@ const STORAGE_KEYS = {
   USERNAME: "twitch_username",
 } as const;
 
-export const saveTokenData = (data: TokenData) => {
-  localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
-  localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
-  localStorage.setItem(STORAGE_KEYS.TOKEN_TYPE, data.token_type);
-  localStorage.setItem(STORAGE_KEYS.SCOPE, JSON.stringify(data.scope));
-  localStorage.setItem(STORAGE_KEYS.EXPIRES_IN, data.expires_in.toString());
-  localStorage.setItem(STORAGE_KEYS.USERNAME, data.username);
+export const saveTokenData = async (data: TokenData) => {
+  await store.set(STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+  await store.set(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+  await store.set(STORAGE_KEYS.TOKEN_TYPE, data.token_type);
+  await store.set(STORAGE_KEYS.SCOPE, JSON.stringify(data.scope));
+  await store.set(STORAGE_KEYS.EXPIRES_IN, data.expires_in.toString());
+  await store.set(STORAGE_KEYS.USERNAME, data.username);
+
+  await store.save();
 };
 
-export const loadTokenData = (): TokenData | null => {
-  const access_token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
-  const refresh_token = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
-  const token_type = localStorage.getItem(STORAGE_KEYS.TOKEN_TYPE);
-  const scopeStr = localStorage.getItem(STORAGE_KEYS.SCOPE);
-  const expires_in = localStorage.getItem(STORAGE_KEYS.EXPIRES_IN);
-  const username = localStorage.getItem(STORAGE_KEYS.USERNAME);
+export const loadTokenData = async (): Promise<TokenData | null> => {
+  const access_token = await store.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
+  const refresh_token = await store.get<string>(STORAGE_KEYS.REFRESH_TOKEN);
+  const token_type = await store.get<string>(STORAGE_KEYS.TOKEN_TYPE);
+  const scopeStr = await store.get<string>(STORAGE_KEYS.SCOPE);
+  const expires_in = await store.get<string>(STORAGE_KEYS.EXPIRES_IN);
+  const username = await store.get<string>(STORAGE_KEYS.USERNAME);
 
   let parsedScope: string[];
   let parsedExpiresIn: number;
@@ -55,5 +60,5 @@ export const loadTokenData = (): TokenData | null => {
 };
 
 export const clearTokenData = () => {
-  Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+  store.clear();
 };
